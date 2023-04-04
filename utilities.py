@@ -44,12 +44,24 @@ def load_train(nb_per_class,begin=0,duration=2,maxfreq=5000):
     df_exp = pd.concat([violin[0:nb_per_class], drum[0:nb_per_class], piano[0:nb_per_class], guitar[0:nb_per_class]])
     
     frequencies = None
+    df_prim = pd.DataFrame
+    dic = {}
+    l = 0
+    flag = True
     for file_name in df_exp["FileName"]:
         signal, rate = librosa.load("./dataset/Train_submission/Train_submission/"+file_name,offset=begin,duration=duration)
         #newS, newR = extract2s(signal, rate)
         fft1,fft2 = calc_fft(signal,rate, maxFreq=maxfreq)
+        if(flag):
+            l = len(fft1)
+            flag = False
         #if frequencies == None:
         #    frequencies = fft1
-        for i in range(len(fft1)):
-            df_exp[str(fft1[i])] = fft2[i]
+        for i in range(l):
+            dic[str(i/2.)] = fft2[i] # a changer si on choisit d autre frequences
+    df_prim = pd.DataFrame(dic, index=df_exp.index[0:4*nb_per_class])
+    df_exp = pd.concat((df_exp, df_prim), axis=1)
     return df_exp
+
+
+
