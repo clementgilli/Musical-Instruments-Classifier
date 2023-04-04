@@ -42,7 +42,6 @@ def load_train(nb_per_class,begin=0,duration=2,maxfreq=5000):
     violin = df_train[df_train['Class'] == "Sound_Violin"]
     piano = df_train[df_train['Class'] == "Sound_Piano"]
     df_exp = pd.concat([violin[0:nb_per_class], drum[0:nb_per_class], piano[0:nb_per_class], guitar[0:nb_per_class]])
-    
     frequencies = None
     df_prim = pd.DataFrame
     dic = {}
@@ -55,10 +54,11 @@ def load_train(nb_per_class,begin=0,duration=2,maxfreq=5000):
         if(flag):
             l = len(fft1)
             flag = False
-        #if frequencies == None:
-        #    frequencies = fft1
+            for j in range(l):
+                dic[str(j/2.)] = [] # a changer si on choisit d autre frequences
         for i in range(l):
-            dic[str(i/2.)] = fft2[i] # a changer si on choisit d autre frequences
+            dic[str(i/2.)].append(fft2[i]) # a changer si on choisit d autre frequences
+    print(dic)
     df_prim = pd.DataFrame(dic, index=df_exp.index[0:4*nb_per_class])
     df_exp = pd.concat((df_exp, df_prim), axis=1)
     return df_exp
