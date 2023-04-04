@@ -32,7 +32,7 @@ def extract2s(signal, rate):
         return signal[int(lengh/2) - rate:int(lengh/2) + rate], rate
     
 
-def load_train(nb_per_class,begin=0,duration=2):
+def load_train(nb_per_class,begin=0,duration=2,maxfreq=5000):
     
     if nb_per_class > 700:
         raise ValueError("too many files")
@@ -47,7 +47,7 @@ def load_train(nb_per_class,begin=0,duration=2):
     for file_name in df_exp["FileName"]:
         signal, rate = librosa.load("./dataset/Train_submission/Train_submission/"+file_name,offset=begin,duration=duration)
         #newS, newR = extract2s(signal, rate)
-        fft1,fft2 = calc_fft(signal,rate, maxFreq=5000)
+        fft1,fft2 = calc_fft(signal,rate, maxFreq=maxfreq)
         #if frequencies == None:
         #    frequencies = fft1
         for i in range(len(fft1)):
