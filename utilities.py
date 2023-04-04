@@ -30,3 +30,26 @@ def extract2s(signal, rate):
         return signal, rate
     else:
         return signal[int(lengh/2) - rate:int(lengh/2) + rate], rate
+    
+
+def load_train(nb_per_class,begin=0,duration=2):
+    
+    if nb_per_class > 700:
+        raise ValueError("too many files")
+    df_train = pd.read_csv("./dataset/Metadata_Train.csv")
+    guitar = df_train[df_train['Class'] == "Sound_Guitar"]
+    drum = df_train[df_train['Class'] == "Sound_Drum"]
+    violin = df_train[df_train['Class'] == "Sound_Violin"]
+    piano = df_train[df_train['Class'] == "Sound_Piano"]
+    df_exp = pd.concat([violin[0:nb_per_class], drum[0:nb_per_class], piano[0:nb_per_class], guitar[0:nb_per_class]])
+    
+    frequencies = None
+    for file_name in df_exp["FileName"]:
+        signal, rate = librosa.load("./dataset/Train_submission/Train_submission/"+file_name,offset=begin,duration=duration)
+        #newS, newR = extract2s(signal, rate)
+        fft1,fft2 = calc_fft(signal,rate, maxFreq=5000)
+        #if frequencies == None:
+        #    frequencies = fft1
+        for i in range(len(fft1)):
+            df_exp[str(fft1[i])] = fft2[i]
+    return df_exp
