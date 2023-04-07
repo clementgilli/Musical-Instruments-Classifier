@@ -63,5 +63,15 @@ def load_train(nb_per_class,begin=0,duration=2,maxfreq=5000):
     df_exp = pd.concat((df_exp, df_prim), axis=1)
     return df_exp
 
+def load_subset(df,coef_train):
+    guitar = df[df['Class'] == "Sound_Guitar"]
+    drum = df[df['Class'] == "Sound_Drum"]
+    violin = df[df['Class'] == "Sound_Violin"]
+    piano = df[df['Class'] == "Sound_Piano"]
+
+    column_headers = df.columns.values[2:]
+    X = df[column_headers]
+    
+
 
 
