@@ -63,15 +63,52 @@ def load_train(nb_per_class,begin=0,duration=2,maxfreq=5000):
     df_exp = pd.concat((df_exp, df_prim), axis=1)
     return df_exp
 
-def load_subset(df,coef_train):
+def load_subsets(df,coef_train=0.6, coef_valid=0.2):
     guitar = df[df['Class'] == "Sound_Guitar"]
     drum = df[df['Class'] == "Sound_Drum"]
     violin = df[df['Class'] == "Sound_Violin"]
     piano = df[df['Class'] == "Sound_Piano"]
 
     column_headers = df.columns.values[2:]
-    X = df[column_headers]
-    
+    coef_test = 1 - coef_train - coef_valid
+    assert(coef_test>0) ## on vérifie qu'il reste des exemples pour le test set
+    Ntot   = len(guitar)
+    Ntrain = int(coef_train*Ntot)
+    Nvalid = int(coef_valid*Ntot)
+    Ntest  = Ntot - Ntrain - Nvalid
+    data_train = pd.DataFrame()
+    data_valid = pd.DataFrame()
+    data_test = pd.DataFrame()
+    for i in range(Ntrain):
+        # je n ai pas trouve de moyen moins CHIANT de faire ca
+        data_train = pd.concat([data_train, pd.DataFrame.transpose(pd.DataFrame(drum.iloc[i]))])
+        data_train = pd.concat([data_train, pd.DataFrame.transpose(pd.DataFrame(guitar.iloc[i]))])
+        data_train = pd.concat([data_train, pd.DataFrame.transpose(pd.DataFrame(piano.iloc[i]))])
+        data_train = pd.concat([data_train, pd.DataFrame.transpose(pd.DataFrame(violin.iloc[i]))])
+
+    for i in range(Ntrain, Ntrain + Nvalid):
+        data_valid = pd.concat([data_valid, pd.DataFrame.transpose(pd.DataFrame(drum.iloc[i]))])
+        data_valid = pd.concat([data_valid, pd.DataFrame.transpose(pd.DataFrame(guitar.iloc[i]))])
+        data_valid = pd.concat([data_valid, pd.DataFrame.transpose(pd.DataFrame(piano.iloc[i]))])
+        data_valid = pd.concat([data_valid, pd.DataFrame.transpose(pd.DataFrame(violin.iloc[i]))])
+
+    for i in range(Ntrain + Nvalid, Ntot):
+        data_test = pd.concat([data_test, pd.DataFrame.transpose(pd.DataFrame(drum.iloc[i]))])
+        data_test = pd.concat([data_test, pd.DataFrame.transpose(pd.DataFrame(guitar.iloc[i]))])
+        data_test = pd.concat([data_test, pd.DataFrame.transpose(pd.DataFrame(piano.iloc[i]))])
+        data_test = pd.concat([data_test, pd.DataFrame.transpose(pd.DataFrame(violin.iloc[i]))])
+
+    column_headers = df.columns.values[2:]
+    X_train = data_train[column_headers]
+    y_train = data_train["Class"]
+    X_test = data_test[column_headers]
+    y_test = data_test["Class"]
+    X_valid = data_valid[column_headers]
+    y_valid = data_valid["Class"]
+    return X_train, y_train, X_valid, y_valid, X_test, y_test
+
+
+        
 
 
 
