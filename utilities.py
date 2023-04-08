@@ -13,7 +13,8 @@ import sklearn
 from tqdm.notebook import tqdm, trange
 import time 
 import ipywidgets as widgets
-
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.model_selection import cross_validate
 
 def calc_fft(y,sr, maxFreq=-1):
     """
@@ -34,7 +35,9 @@ def extract2s(signal, rate):
         return signal, rate
     else:
         return signal[int(lengh/2) - rate:int(lengh/2) + rate], rate
-    
+
+def cut_in_parts(tab, n):
+    return [tab[n*i] for i in range(0, int(len(tab)/n))]
 
 def load_train(nb_per_class,begin=0,duration=2,maxfreq=5000):
     
@@ -55,6 +58,8 @@ def load_train(nb_per_class,begin=0,duration=2,maxfreq=5000):
         signal, rate = librosa.load("./dataset/Train_submission/Train_submission/"+file_name,offset=begin,duration=duration)
         #newS, newR = extract2s(signal, rate)
         fft1,fft2 = calc_fft(signal,rate, maxFreq=maxfreq)
+        fft1 = cut_in_parts(fft1,10)
+        fft2 = cut_in_parts(fft2,10)
         if(flag):
             l = len(fft1)
             flag = False
@@ -62,10 +67,49 @@ def load_train(nb_per_class,begin=0,duration=2,maxfreq=5000):
                 dic[str(j/2.)] = [] # a changer si on choisit d autre frequences
         for i in range(l):
             dic[str(i/2.)].append(fft2[i]) # a changer si on choisit d autre frequences
-    print(dic)
     df_prim = pd.DataFrame(dic, index=df_exp.index[0:4*nb_per_class])
     df_exp = pd.concat((df_exp, df_prim), axis=1)
     return df_exp
+
+def load_test(nb_per_class,begin=0,duration=2,maxfreq=5000):
+    
+    if nb_per_class > 20:
+        raise ValueError("too many files")
+    df_test = pd.read_csv("./dataset/Metadata_Test.csv")
+    guitar = df_test[df_test['Class'] == "Sound_Guiatr"]
+    drum = df_test[df_test['Class'] == "Sound_Drum"]
+    violin = df_test[df_test['Class'] == "Sound_Violin"]
+    piano = df_test[df_test['Class'] == "Sound_Piano"]
+    df_exp = pd.concat([violin[0:nb_per_class], drum[0:nb_per_class], piano[0:nb_per_class], guitar[0:nb_per_class]])
+    frequencies = None
+    df_prim = pd.DataFrame
+    dic = {}
+    l = 0
+    flag = True
+    for file_name in tqdm(df_exp["FileName"]):
+        signal, rate = librosa.load("./dataset/Test_submission/Test_submission/"+file_name,offset=begin,duration=duration)
+        #newS, newR = extract2s(signal, rate)
+        fft1,fft2 = calc_fft(signal,rate, maxFreq=maxfreq)
+        fft1 = cut_in_parts(fft1,10)
+        fft2 = cut_in_parts(fft2,10)
+        if(flag):
+            l = len(fft1)
+            flag = False
+            for j in range(l):
+                dic[str(j/2.)] = [] # a changer si on choisit d autre frequences
+        for i in range(l):
+            dic[str(i/2.)].append(fft2[i]) # a changer si on choisit d autre frequences
+    df_prim = pd.DataFrame(dic, index=df_exp.index[0:4*nb_per_class])
+    df_exp = pd.concat((df_exp, df_prim), axis=1)
+    return df_exp
+
+def convert_df(df):
+
+    column_headers = df.columns.values[2:]    
+    X = df[column_headers]
+    y = df["Class"]
+    
+    return X, y
 
 def load_subsets(df,coef_train=0.6, coef_valid=0.4):
     guitar = df[df['Class'] == "Sound_Guitar"]
@@ -75,14 +119,12 @@ def load_subsets(df,coef_train=0.6, coef_valid=0.4):
 
     column_headers = df.columns.values[2:]
     coef_test = 1 - coef_train - coef_valid
-    #assert(coef_test>0) ## on vérifie qu'il reste des exemples pour le test set
     Ntot   = len(guitar)
     Ntrain = int(coef_train*Ntot)
     Nvalid = int(coef_valid*Ntot)
     Ntest  = Ntot - Ntrain - Nvalid
     data_train = pd.DataFrame()
     data_valid = pd.DataFrame()
-    #data_test = pd.DataFrame()
     for i in tqdm(range(Ntrain)):
         # je n ai pas trouve de moyen moins CHIANT de faire ca
         data_train = pd.concat([data_train, pd.DataFrame.transpose(pd.DataFrame(drum.iloc[i]))])
@@ -96,20 +138,20 @@ def load_subsets(df,coef_train=0.6, coef_valid=0.4):
         data_valid = pd.concat([data_valid, pd.DataFrame.transpose(pd.DataFrame(piano.iloc[i]))])
         data_valid = pd.concat([data_valid, pd.DataFrame.transpose(pd.DataFrame(violin.iloc[i]))])
 
-    #for i in range(Ntrain + Nvalid, Ntot):
-    #    data_test = pd.concat([data_test, pd.DataFrame.transpose(pd.DataFrame(drum.iloc[i]))])
-    #    data_test = pd.concat([data_test, pd.DataFrame.transpose(pd.DataFrame(guitar.iloc[i]))])
-    #    data_test = pd.concat([data_test, pd.DataFrame.transpose(pd.DataFrame(piano.iloc[i]))])
-    #    data_test = pd.concat([data_test, pd.DataFrame.transpose(pd.DataFrame(violin.iloc[i]))])
-
     column_headers = df.columns.values[2:]
     X_train = data_train[column_headers]
     y_train = data_train["Class"]
-    #X_test = data_test[column_headers]
-    #y_test = data_test["Class"]
     X_valid = data_valid[column_headers]
     y_valid = data_valid["Class"]
-    return X_train, y_train, X_valid, y_valid #, X_test, y_test
+    return X_train, y_train, X_valid, y_valid
+
+def load_subsets_test(df):
+
+    column_headers = df.columns.values[2:]    
+    X_test = df[column_headers]
+    y_test = df["Class"]
+    
+    return X_test, y_test
 
 def plot_cumexpvar(X_train,varianceExplained=0.95):
     preProc = sklearn.decomposition.PCA(varianceExplained)
@@ -119,16 +161,16 @@ def plot_cumexpvar(X_train,varianceExplained=0.95):
     plt.xlabel("Variance")
     plt.ylabel("n_component")
         
-def plot_score_components(X_train,y_train,X_valid,y_valid,begin,end,step):
-
+def plot_score_components(X_train,y_train,X_valid,y_valid,C,degree,begin,end,step):
+    
+    assert (begin >= 10)
     linear_training_score = []
     linear_valid_score = []
-
-    clf = sklearn.svm.SVC(C=2,kernel="poly",degree=5,coef0=1)
-    nComp_range = np.arange(begin,end,step) # [800,1200] #np.arange(130,175,1) #130 170
+    clf = sklearn.multiclass.OneVsRestClassifier(sklearn.svm.SVC(C=C,kernel="poly",degree=degree,coef0=1))
+    #clf = sklearn.svm.SVC(C=C,kernel="poly",degree=degree,coef0=1)
+    nComp_range = np.arange(begin,end,step)
 
     for nC in tqdm(nComp_range):
-        
         preProc = sklearn.decomposition.PCA(nC)
         preProc.fit(X_train)
 
@@ -150,6 +192,6 @@ def plot_score_components(X_train,y_train,X_valid,y_valid,begin,end,step):
     ax.legend()
     ax.set_ylim([0.5,1])
     bestIndex = np.argmax(linear_valid_score) 
-    print(f"best n_comp : {nComp_range[bestIndex]}")
+    print(f"best n_comp : {nComp_range[bestIndex]} | train score : {linear_training_score[bestIndex]} | valid score : {linear_valid_score[bestIndex]}")
 
 
