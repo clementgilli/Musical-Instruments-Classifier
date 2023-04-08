@@ -55,7 +55,13 @@ def load_train(nb_per_class,begin=0,duration=2,maxfreq=5000):
     l = 0
     flag = True
     for file_name in tqdm(df_exp["FileName"]):
-        signal, rate = librosa.load("./dataset/Train_submission/Train_submission/"+file_name,offset=begin,duration=duration)
+        # changement L-A
+        dur = librosa.get_duration(filename="./dataset/Train_submission/Train_submission/"+file_name)
+        if dur > 2*duration:
+            mid = dur/2.
+        else:
+            mid = 0
+        signal, rate = librosa.load("./dataset/Train_submission/Train_submission/"+file_name,offset=mid,duration=duration)
         #newS, newR = extract2s(signal, rate)
         fft1,fft2 = calc_fft(signal,rate, maxFreq=maxfreq)
         fft1 = cut_in_parts(fft1,10)
@@ -71,7 +77,7 @@ def load_train(nb_per_class,begin=0,duration=2,maxfreq=5000):
     df_exp = pd.concat((df_exp, df_prim), axis=1)
     return df_exp
 
-def load_test(nb_per_class,begin=0,duration=2,maxfreq=5000):
+def load_test(nb_per_class,begin=-1,duration=2,maxfreq=5000):
     
     if nb_per_class > 20:
         raise ValueError("too many files")
@@ -87,7 +93,14 @@ def load_test(nb_per_class,begin=0,duration=2,maxfreq=5000):
     l = 0
     flag = True
     for file_name in tqdm(df_exp["FileName"]):
-        signal, rate = librosa.load("./dataset/Test_submission/Test_submission/"+file_name,offset=begin,duration=duration)
+        #si begin = -1, on tape au milieu du fichier (presupose de tout charger)
+        # changement L-A
+        dur = librosa.get_duration(filename="./dataset/Test_submission/Test_submission/"+file_name)
+        if dur > 2*duration:
+            mid = dur/2.
+        else:
+            mid = 0
+        signal, rate = librosa.load("./dataset/Test_submission/Test_submission/"+file_name,offset=mid,duration=duration)
         #newS, newR = extract2s(signal, rate)
         fft1,fft2 = calc_fft(signal,rate, maxFreq=maxfreq)
         fft1 = cut_in_parts(fft1,10)
@@ -104,7 +117,7 @@ def load_test(nb_per_class,begin=0,duration=2,maxfreq=5000):
     return df_exp
 
 def convert_df(df):
-
+    df = df.sample(frac=1) # melange tout
     column_headers = df.columns.values[2:]    
     X = df[column_headers]
     y = df["Class"]
