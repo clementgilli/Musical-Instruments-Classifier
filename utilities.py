@@ -11,7 +11,8 @@ from PIL import Image, ImageTk
 import librosa
 import sklearn
 from tqdm.notebook import tqdm, trange
-import time 
+import time
+import IPython.display as ipd
 import ipywidgets as widgets
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.model_selection import cross_validate
@@ -125,11 +126,11 @@ def convert_df(df):
     return X, y
 
 def load_subsets(df,coef_train=0.6, coef_valid=0.4):
-    guitar = df[df['Class'] == "Sound_Guitar"]
-    drum = df[df['Class'] == "Sound_Drum"]
-    violin = df[df['Class'] == "Sound_Violin"]
-    piano = df[df['Class'] == "Sound_Piano"]
-
+    guitar = df[df['Class'] == "Sound_Guitar"].sample(frac=1)
+    drum = df[df['Class'] == "Sound_Drum"].sample(frac=1)
+    violin = df[df['Class'] == "Sound_Violin"].sample(frac=1)
+    piano = df[df['Class'] == "Sound_Piano"].sample(frac=1)
+    
     column_headers = df.columns.values[2:]
     coef_test = 1 - coef_train - coef_valid
     Ntot   = len(guitar)
@@ -206,5 +207,100 @@ def plot_score_components(X_train,y_train,X_valid,y_valid,C,degree,begin,end,ste
     ax.set_ylim([0.5,1])
     bestIndex = np.argmax(linear_valid_score) 
     print(f"best n_comp : {nComp_range[bestIndex]} | train score : {linear_training_score[bestIndex]} | valid score : {linear_valid_score[bestIndex]}")
+    
+    
+def cross_val(X,y,cv,C,degree,begin,end,step):
+    clf = sklearn.svm.SVC(C=C,kernel="poly",degree=degree,coef0=1,probability=True)
+    train_score = []
+    valid_score = []
+    nComp_range = np.arange(begin,end,step)
+    for i in tqdm(nComp_range):
+        preProc = sklearn.decomposition.PCA(i)
+        preProc.fit(X)
+
+        X_Transformed = preProc.transform(X)
+
+        cv_results = cross_validate(clf, X_Transformed, y, cv=10,return_estimator=True,return_train_score=True)
+        #sorted(cv_results.keys())
+        train_score.append(np.max(cv_results['train_score']))
+        valid_score.append(np.max(cv_results['test_score']))
+    bestIndex = np.argmax(valid_score)
+    bestComp = nComp_range[bestIndex]
+    
+    
+    fig = plt.figure(figsize=(6,6))
+    ax = fig.add_subplot(1,1,1)
+    ax.plot(nComp_range, train_score, label= "train score")
+    ax.plot(nComp_range, valid_score, label= "valid score")
+    ax.set_xlabel("nombre comp")
+    ax.set_ylabel("scores")
+    ax.legend()
+    ax.set_ylim([0.5,1])
+    
+    
+    preProc = sklearn.decomposition.PCA(bestComp)
+    preProc.fit(X)
+    X_Transformed = preProc.transform(X)
+
+    cv_results = cross_validate(clf, X_Transformed, y, cv=10,return_estimator=True,return_train_score=True)
+    #sorted(cv_results.keys())
+    best_estim_index = np.argmax(cv_results["test_score"])
+    
+    print(f"best n_comp : {nComp_range[bestIndex]} | train score : {train_score[bestIndex]} | valid score : {valid_score[bestIndex]}")
+    
+    return cv_results["estimator"][best_estim_index], preProc
+
+def find_real(i,y_test):
+    if  y_test.iloc[i] == "Sound_Drum":
+        return 0
+    elif  y_test.iloc[i] == "Sound_Guitar":
+        return 1
+    elif  y_test.iloc[i] == "Sound_Piano":
+        return 2
+    else:
+        return 3
+    
+def show_bad_prediction(X_test_Transformed,y_test,best_svc,data,X_test,show_file_name=False):
+    predict = best_svc.predict(X_test_Transformed)
+    predict_proba = best_svc.predict_proba(X_test_Transformed)
+    for i in range(len(predict)):
+        if {predict[i]} != {y_test.iloc[i]}:
+            proba = np.max(predict_proba[i])
+            prob_real = predict_proba[i][find_real(i,y_test)]
+            if show_file_name:
+                name_file = data.loc[int(X_test.iloc[i].name)]["FileName"]
+                print(f"file : {name_file:20s}   |   predict : {predict[i]:12s} with prob = {proba:.3f}   |   real : {y_test.iloc[i]:12s} with prob = {prob_real:.3f}")
+            else:
+                print(f"predict : {predict[i]:12s} with prob = {proba:.3f}   |   real : {y_test.iloc[i]:12s} with prob = {prob_real:.3f}")
 
 
+def class_file(file,duration):
+    dic = {}
+    l = 0
+    flag = True
+    dur = librosa.get_duration(filename=file)
+    if dur > 2*duration:
+        mid = dur/2.
+    else:
+        mid = 0
+    signal, rate = librosa.load(file,offset=mid,duration=duration)
+        #newS, newR = extract2s(signal, rate)
+    fft1,fft2 = calc_fft(signal,rate, maxFreq=5000)
+    fft1 = cut_in_parts(fft1,10)
+    fft2 = cut_in_parts(fft2,10)
+    if(flag):
+        l = len(fft1)
+        flag = False
+        for j in range(l):
+            dic[str(j/2.)] = [] # a changer si on choisit d autre frequences
+    for i in range(l):
+        dic[str(i/2.)].append(fft2[i]) # a changer si on choisit d autre frequences
+    return pd.DataFrame(dic)
+
+def predict_instrument(file,best_svc,preProc,prob=False):
+    audio = class_file(file,2)
+    if prob:
+            p = np.max(best_svc.predict_proba(preProc.transform(audio))[0])*100
+            print(f"It's a {best_svc.predict(preProc.transform(audio))[0]} ! (with {p:.1f}% accuracy)")
+    else:
+        print(f"It's a {best_svc.predict(preProc.transform(audio))[0]} !")
