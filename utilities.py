@@ -135,18 +135,21 @@ def convert_df(df):
     
     return X, y
 
-def load_subsets(df,coef_train=0.6, coef_valid=0.4):
+def load_subsets(df,coef_train=0.6, coef_test=0.4):
+    """
+    Fait la séparation des données entre un jeu pour les entrainements
+        (cross-validation comprise) et tests.
+    Return : X_train, y_train, X_valid, y_valid
+    """
     guitar = df[df['Class'] == "Sound_Guitar"].sample(frac=1)
     drum = df[df['Class'] == "Sound_Drum"].sample(frac=1)
     violin = df[df['Class'] == "Sound_Violin"].sample(frac=1)
     piano = df[df['Class'] == "Sound_Piano"].sample(frac=1)
     
     column_headers = df.columns.values[2:]
-    coef_test = 1 - coef_train - coef_valid
     Ntot   = len(guitar)
     Ntrain = int(coef_train*Ntot)
-    Nvalid = int(coef_valid*Ntot)
-    Ntest  = Ntot - Ntrain - Nvalid
+    Ntest = int(coef_test*Ntot)
     data_train = pd.DataFrame()
     data_valid = pd.DataFrame()
     for i in tqdm(range(Ntrain)):
@@ -156,7 +159,7 @@ def load_subsets(df,coef_train=0.6, coef_valid=0.4):
         data_train = pd.concat([data_train, pd.DataFrame.transpose(pd.DataFrame(piano.iloc[i]))])
         data_train = pd.concat([data_train, pd.DataFrame.transpose(pd.DataFrame(violin.iloc[i]))])
 
-    for i in tqdm(range(Ntrain, Ntrain + Nvalid)):
+    for i in tqdm(range(Ntrain, Ntrain + Ntest)):
         data_valid = pd.concat([data_valid, pd.DataFrame.transpose(pd.DataFrame(drum.iloc[i]))])
         data_valid = pd.concat([data_valid, pd.DataFrame.transpose(pd.DataFrame(guitar.iloc[i]))])
         data_valid = pd.concat([data_valid, pd.DataFrame.transpose(pd.DataFrame(piano.iloc[i]))])
