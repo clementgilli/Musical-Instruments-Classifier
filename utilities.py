@@ -40,7 +40,17 @@ def extract2s(signal, rate):
 def cut_in_parts(tab, n):
     return [tab[n*i] for i in range(0, int(len(tab)/n))]
 
-def load_train(nb_per_class,begin=0,duration=2,maxfreq=5000):
+def load_train(nb_per_class,duration=2,maxfreq=5000):
+    """
+    Charge les données.
+    Paramètres :
+        - nb_per_class : nombres de fichiers audios utilisés pour chaque classe d'instrument
+        - duration : duree pris en compte pour un fichier audio
+        - maxfreq : nombre de tranche de frequences utilisee pour la decomposition de Fourier
+    Return:
+        DataFrame dont les lignes sont les fichiers audios, les colonnes le label et l'intensite pour chaque frequence
+
+    """
     
     if nb_per_class > 700:
         raise ValueError("too many files")
