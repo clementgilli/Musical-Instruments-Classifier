@@ -42,14 +42,13 @@ def cut_in_parts(tab, n):
 
 def load_train(nb_per_class,duration=2,maxfreq=5000):
     """
-    Charge les données.
-    Paramètres :
-        - nb_per_class : nombres de fichiers audios utilisés pour chaque classe d'instrument
+    Charge les donnees.
+    Parametres :
+        - nb_per_class : nombres de fichiers audios utilises pour chaque classe d'instrument
         - duration : duree pris en compte pour un fichier audio
-        - maxfreq : nombre de tranche de frequences utilisee pour la decomposition de Fourier
+        - maxfreq : nombre de tranche de frequences utilisees pour la decomposition de Fourier
     Return:
         DataFrame dont les lignes sont les fichiers audios, les colonnes le label et l'intensite pour chaque frequence
-
     """
     
     if nb_per_class > 700:
@@ -137,9 +136,9 @@ def convert_df(df):
 
 def load_subsets(df,coef_train=0.6, coef_test=0.4):
     """
-    Fait la séparation des données entre un jeu pour les entrainements
+    Fait la separation des données entre un jeu pour les entrainements
         (cross-validation comprise) et tests.
-    Return : X_train, y_train, X_valid, y_valid
+    Return : X_train, y_train, X_test, y_test
     """
     guitar = df[df['Class'] == "Sound_Guitar"].sample(frac=1)
     drum = df[df['Class'] == "Sound_Drum"].sample(frac=1)
