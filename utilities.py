@@ -220,6 +220,7 @@ def plot_score_components(X_train,y_train,X_valid,y_valid,C,degree,begin,end,ste
     ax.set_ylabel("scores")
     ax.legend()
     ax.set_ylim([0.5,1])
+    ax.set_title(f"C = {C}, degre = {degree}")
     bestIndex = np.argmax(linear_valid_score) 
     print(f"best n_comp : {nComp_range[bestIndex]} | train score : {linear_training_score[bestIndex]} | valid score : {linear_valid_score[bestIndex]}")
     
