@@ -184,9 +184,11 @@ def plot_cumexpvar(X_train,varianceExplained=0.95):
     preProc = sklearn.decomposition.PCA(varianceExplained)
     preProc.fit(X_train)
     CumulativeExplainedVariance = np.cumsum(preProc.explained_variance_ratio_)
-    plt.plot(CumulativeExplainedVariance, marker='+')
-    plt.xlabel("Variance")
-    plt.ylabel("n_component")
+    fig = plt.figure(figsize=(10, 6))
+    ax = fig.add_subplot()
+    ax.plot(CumulativeExplainedVariance, marker='+')
+    ax.set_ylabel("Variance")
+    ax.set_xlabel("n_component")
         
 def plot_score_components(X_train,y_train,X_valid,y_valid,C,degree,begin,end,step):
     
